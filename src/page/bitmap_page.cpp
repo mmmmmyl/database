@@ -1,7 +1,7 @@
 #include "page/bitmap_page.h"
 
 #include "glog/logging.h"
-
+#include <iostream>
 /**
  * TODO: Student Implement
  */
@@ -11,8 +11,8 @@ bool BitmapPage<PageSize>::AllocatePage(uint32_t &page_offset) {
   page_allocated_++;
   page_offset = next_free_page_;
   bytes[page_offset/8] |= 0x1 << (7-page_offset%8);
-  for(uint32_t offset = 0;offset < GetMaxSupportedSize();offset++){
-    if(IsPageFree(offset)) next_free_page_ = offset;
+  for(size_t offset = 0;offset < GetMaxSupportedSize();offset++){
+    if(IsPageFree(offset)) {next_free_page_ = offset;break;}
   }
   return true;
 }
