@@ -42,6 +42,7 @@ uint32_t Row::DeserializeFrom(char *buf, Schema *schema) {
   uint32_t bitmap;
   memcpy(&bitmap, buf + offset, sizeof(uint32_t));
   offset += sizeof(uint32_t);
+  fields_.resize(schema->GetColumnCount());
   for (uint32_t i = 0; i < schema->GetColumnCount(); i++) {
     fields_[i] = new Field(schema->GetColumn(i)->GetType());
     fields_[i]->DeserializeFrom(buf + offset, schema->GetColumn(i)->GetType(), &fields_[i], bitmap & (1 << i));
