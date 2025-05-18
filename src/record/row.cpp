@@ -9,16 +9,25 @@ uint32_t Row::SerializeTo(char *buf, Schema *schema) const {
   // replace with your code here
   uint32_t offset = 0;
   uint32_t header_size = schema->GetSerializedSize();
-  memcpy(buf, &header_size, sizeof(uint32_t));
+  LOG(INFO) << reinterpret_cast<void*>(buf+offset);
+  LOG(INFO) << reinterpret_cast<void*>(buf+4);
+  LOG(INFO)<<header_size<<" "<<&header_size;
+  MACH_WRITE_UINT32(buf, header_size);
+  //memcpy(buf, &header_size, sizeof(uint32_t));
   offset += sizeof(uint32_t);
-  memcpy(buf + offset, &rid_, sizeof(RowId));
-  offset += sizeof(RowId);
+  MACH_WRITE_UINT32(buf+offset, rid_.GetPageId());
+  offset += sizeof(uint32_t);
+  MACH_WRITE_UINT32(buf+offset, rid_.GetSlotNum());
+  offset += sizeof(uint32_t);
+  // memcpy(buf + offset, &rid_, sizeof(RowId));
+  // offset += sizeof(RowId);
   uint32_t bitmap = 0;
   for (uint32_t i = 0; i < fields_.size(); i++) {
     if (fields_[i]->IsNull()) bitmap |= (1 << i);
     else bitmap &= ~(1 << i);
   }
-  memcpy(buf + offset, &bitmap, sizeof(uint32_t));
+  MACH_WRITE_UINT32(buf+offset, bitmap);
+  //memcpy(buf + offset, &bitmap, sizeof(uint32_t));
   offset += sizeof(uint32_t);
   for (uint32_t i = 0; i < fields_.size(); i++) {
     if (fields_[i]->IsNull()) {
@@ -35,12 +44,19 @@ uint32_t Row::DeserializeFrom(char *buf, Schema *schema) {
   // replace with your code here
   uint32_t offset = 0;
   uint32_t header_size;
-  memcpy(&header_size, buf + offset, sizeof(uint32_t));
+  header_size = MACH_READ_UINT32(buf);
+  //memcpy(&header_size, buf + offset, sizeof(uint32_t));
   offset += sizeof(uint32_t);
-  memcpy(&rid_, buf + offset, sizeof(RowId));
-  offset += sizeof(RowId);
+  uint32_t page_id = MACH_READ_UINT32(buf + offset);
+  offset += sizeof(uint32_t);
+  uint32_t slot_num = MACH_READ_UINT32(buf + offset);
+  offset += sizeof(uint32_t);
+  rid_.Set(page_id, slot_num);
+  // memcpy(&rid_, buf + offset, sizeof(RowId));
+  // offset += sizeof(RowId);
   uint32_t bitmap;
-  memcpy(&bitmap, buf + offset, sizeof(uint32_t));
+  bitmap = MACH_READ_UINT32(buf + offset);
+  //memcpy(&bitmap, buf + offset, sizeof(uint32_t));
   offset += sizeof(uint32_t);
   fields_.resize(schema->GetColumnCount());
   for (uint32_t i = 0; i < schema->GetColumnCount(); i++) {
