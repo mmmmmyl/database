@@ -133,9 +133,8 @@ void InternalPage::MoveHalfTo(InternalPage *recipient, BufferPoolManager *buffer
   recipient->CopyNFrom(pairs_off + half * pair_size, GetSize() - half, buffer_pool_manager);
   SetSize(half);
   recipient->SetParentPageId(GetParentPageId());
-  recipient->SetMaxSize(GetMaxSize());
-  recipient->SetKeySize(GetKeySize());
   recipient->SetPageType(IndexPageType::INTERNAL_PAGE);
+  recipient->SetSize(GetSize() - half);
 }
 
 /* Copy entries into me, starting from {items} and copy {size} entries.
