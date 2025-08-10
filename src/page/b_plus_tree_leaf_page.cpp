@@ -57,7 +57,7 @@ void LeafPage::SetNextPageId(page_id_t next_page_id) {
 int LeafPage::KeyIndex(const GenericKey *key, const KeyManager &KM) {
   int left,right,mid;
   left = 0;
-  right = GetSize()-1;
+  right = GetSize();
   while(left < right){
     mid = (left + right) / 2;
     if(KM.CompareKeys(KeyAt(mid),key) == 0){
@@ -113,7 +113,7 @@ std::pair<GenericKey *, RowId> LeafPage::GetItem(int index) { return {KeyAt(inde
  */
 int LeafPage::Insert(GenericKey *key, const RowId &value, const KeyManager &KM) {
   int index = KeyIndex(key, KM);
-  LOG(INFO)<<"Insert position: "<<index;
+  //LOG(INFO)<<"Insert position: "<<index;
   if (GetSize() > GetMaxSize()){
     return -1;
   }
@@ -199,8 +199,8 @@ int LeafPage::RemoveAndDeleteRecord(const GenericKey *key, const KeyManager &KM)
     SetValueAt(i, ValueAt(i + 1));
   }
   SetSize(GetSize() - 1);
-  SetKeyAt(GetSize(), nullptr);
-  SetValueAt(GetSize(), RowId(0));
+  // SetKeyAt(GetSize(), nullptr);
+  // SetValueAt(GetSize(), RowId(0));
   return GetSize();
 }
 
@@ -216,8 +216,8 @@ void LeafPage::MoveAllTo(LeafPage *recipient) {
   recipient->SetNextPageId(GetNextPageId());
   recipient->SetSize(recipient->GetSize() + GetSize());
   SetSize(0);
-  SetKeyAt(0, nullptr);
-  SetValueAt(0, RowId(0));
+  // SetKeyAt(0, nullptr);
+  // SetValueAt(0, RowId(0));
   SetNextPageId(0);
 }
 
@@ -255,8 +255,8 @@ void LeafPage::CopyLastFrom(GenericKey *key, const RowId value) {
 void LeafPage::MoveLastToFrontOf(LeafPage *recipient, GenericKey *middle_key,
                                     BufferPoolManager *buffer_pool_manager) {
   recipient->CopyFirstFrom(KeyAt(GetSize() - 1), ValueAt(GetSize() - 1));
-  SetKeyAt(GetSize() - 1, nullptr);
-  SetValueAt(GetSize() - 1, RowId(0));
+  // SetKeyAt(GetSize() - 1, nullptr);
+  // SetValueAt(GetSize() - 1, RowId(0));
   SetSize(GetSize() - 1);
   recipient->IncreaseSize(1);
 }

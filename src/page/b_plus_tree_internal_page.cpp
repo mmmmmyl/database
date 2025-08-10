@@ -73,20 +73,21 @@ void InternalPage::PairCopy(void *dest, void *src, int pair_num) {
  * 用了二分查找
  */
 page_id_t InternalPage::Lookup(const GenericKey *key, const KeyManager &KM) {
-  int left,right;
+  int left,right,mid;
   left = 0;
   right = GetSize()-1;
-  while(left <= right){
-    int mid = (left + right) / 2;
+  while(left < right){
+    mid = (left + right + 1) / 2;
+    if(mid==0) return ValueAt(0);
     if(KM.CompareKeys(KeyAt(mid),key) == 0){
       return ValueAt(mid);
     }else if(KM.CompareKeys(KeyAt(mid),key) < 0){
-      left = mid + 1;
+      left = mid;
     }else{
       right = mid - 1;
     }
   }
-  return INVALID_PAGE_ID;
+  return ValueAt(left);
 }
 
 /*****************************************************************************
@@ -100,7 +101,6 @@ page_id_t InternalPage::Lookup(const GenericKey *key, const KeyManager &KM) {
  */
 void InternalPage::PopulateNewRoot(const page_id_t &old_value, GenericKey *new_key, const page_id_t &new_value) {
   InsertNodeAfter(old_value, new_key, new_value);
-  IncreaseSize(1);
   SetLSN(INVALID_LSN);
 }
 
@@ -177,8 +177,8 @@ void InternalPage::Remove(int index) {
     SetValueAt(i,ValueAt(i+1));
   }
   SetSize(GetSize()-1);
-  SetKeyAt(GetSize(),nullptr);
-  SetValueAt(GetSize(),INVALID_PAGE_ID);
+  // SetKeyAt(GetSize(),nullptr);
+  // SetValueAt(GetSize(),INVALID_PAGE_ID);
 }
 
 /*
