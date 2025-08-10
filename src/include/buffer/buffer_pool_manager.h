@@ -45,7 +45,7 @@ class BufferPoolManager {
 
   frame_id_t TryToFindFreePage();
 
- private:
+ public:
   size_t pool_size_;                                 // number of pages in buffer pool
   Page *pages_;                                      // array of pages
   DiskManager *disk_manager_;                        // pointer to the disk manager.

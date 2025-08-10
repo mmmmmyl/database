@@ -9,9 +9,9 @@ uint32_t Row::SerializeTo(char *buf, Schema *schema) const {
   // replace with your code here
   uint32_t offset = 0;
   uint32_t header_size = schema->GetSerializedSize();
-  LOG(INFO) << reinterpret_cast<void*>(buf+offset);
-  LOG(INFO) << reinterpret_cast<void*>(buf+4);
-  LOG(INFO)<<header_size<<" "<<&header_size;
+  // LOG(INFO) << reinterpret_cast<void*>(buf+offset);
+  // LOG(INFO) << reinterpret_cast<void*>(buf+4);
+  // LOG(INFO)<<header_size<<" "<<&header_size;
   MACH_WRITE_UINT32(buf, header_size);
   //memcpy(buf, &header_size, sizeof(uint32_t));
   offset += sizeof(uint32_t);

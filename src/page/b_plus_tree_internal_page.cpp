@@ -21,7 +21,8 @@
 void InternalPage::Init(page_id_t page_id, page_id_t parent_id, int key_size, int max_size) {
   SetPageId(page_id);
   SetParentPageId(parent_id);
-  SetMaxSize(max_size);
+  if(max_size==UNDEFINED_SIZE) SetMaxSize((PAGE_SIZE - INTERNAL_PAGE_HEADER_SIZE) / pair_size);
+  else SetMaxSize(max_size);
   SetKeySize(key_size);
   SetPageType(IndexPageType::INTERNAL_PAGE);
   SetSize(0);
@@ -98,7 +99,9 @@ page_id_t InternalPage::Lookup(const GenericKey *key, const KeyManager &KM) {
  * NOTE: This method is only called within InsertIntoParent()(b_plus_tree.cpp)
  */
 void InternalPage::PopulateNewRoot(const page_id_t &old_value, GenericKey *new_key, const page_id_t &new_value) {
-  InternalPage* new_root = new InternalPage();
+  InsertNodeAfter(old_value, new_key, new_value);
+  IncreaseSize(1);
+  SetLSN(INVALID_LSN);
 }
 
 /*
@@ -107,14 +110,20 @@ void InternalPage::PopulateNewRoot(const page_id_t &old_value, GenericKey *new_k
  * @return:  new size after insertion
  */
 int InternalPage::InsertNodeAfter(const page_id_t &old_value, GenericKey *new_key, const page_id_t &new_value) {
+  if(old_value == INVALID_PAGE_ID) {
+    SetKeyAt(0, new_key);
+    SetValueAt(0, new_value);
+    IncreaseSize(1);
+    return GetSize();
+  }
   for(auto i=0;i<GetSize();i++){
     if(ValueAt(i)==old_value){
-      for(auto j=GetSize();j>i;j--){
+      for(auto j=GetSize();j>i+1;j--){
         SetKeyAt(j,KeyAt(j-1));
         SetValueAt(j,ValueAt(j-1));
       }
-      SetKeyAt(i,new_key);
-      SetValueAt(i,new_value);
+      SetKeyAt(i+1,new_key);
+      SetValueAt(i+1,new_value);
       IncreaseSize(1);
       return GetSize();
     }

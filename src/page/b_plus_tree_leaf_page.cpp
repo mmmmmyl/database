@@ -24,11 +24,11 @@
 void LeafPage::Init(page_id_t page_id, page_id_t parent_id, int key_size, int max_size) {
   SetPageId(page_id);
   SetParentPageId(parent_id);
-  SetMaxSize(max_size);
+  if(max_size==UNDEFINED_SIZE) SetMaxSize((PAGE_SIZE - LEAF_PAGE_HEADER_SIZE) / pair_size);
+  else SetMaxSize(max_size);
   SetKeySize(key_size);
   SetPageType(IndexPageType::LEAF_PAGE);
   SetSize(0);
-  SetNextPageId(0);
   SetLSN(INVALID_LSN);
 }
 
@@ -55,17 +55,17 @@ void LeafPage::SetNextPageId(page_id_t next_page_id) {
  * 二分查找
  */
 int LeafPage::KeyIndex(const GenericKey *key, const KeyManager &KM) {
-  int left,right;
+  int left,right,mid;
   left = 0;
   right = GetSize()-1;
-  while(left <= right){
-    int mid = (left + right) / 2;
+  while(left < right){
+    mid = (left + right) / 2;
     if(KM.CompareKeys(KeyAt(mid),key) == 0){
       return mid;
     }else if(KM.CompareKeys(KeyAt(mid),key) < 0){
       left = mid + 1;
     }else{
-      right = mid - 1;
+      right = mid;
     }
   }
   return left;
@@ -113,7 +113,8 @@ std::pair<GenericKey *, RowId> LeafPage::GetItem(int index) { return {KeyAt(inde
  */
 int LeafPage::Insert(GenericKey *key, const RowId &value, const KeyManager &KM) {
   int index = KeyIndex(key, KM);
-  if (GetSize() == GetMaxSize()){
+  LOG(INFO)<<"Insert position: "<<index;
+  if (GetSize() > GetMaxSize()){
     return -1;
   }
   if (index < GetSize() && KM.CompareKeys(KeyAt(index), key) == 0) {
@@ -137,10 +138,11 @@ int LeafPage::Insert(GenericKey *key, const RowId &value, const KeyManager &KM) 
  */
 void LeafPage::MoveHalfTo(LeafPage *recipient) {
   int half = (GetSize() + 1) / 2;
+  int reci_half = GetSize() - half;
   recipient->CopyNFrom(pairs_off + half * pair_size, GetSize() - half);
   SetSize(half);
   SetNextPageId(recipient->GetPageId());
-  recipient->SetSize(GetSize() - half);
+  recipient->SetSize(reci_half);
 }
 
 /*
@@ -250,7 +252,8 @@ void LeafPage::CopyLastFrom(GenericKey *key, const RowId value) {
 /*
  * Remove the last key & value pair from this page to "recipient" page.
  */
-void LeafPage::MoveLastToFrontOf(LeafPage *recipient) {
+void LeafPage::MoveLastToFrontOf(LeafPage *recipient, GenericKey *middle_key,
+                                    BufferPoolManager *buffer_pool_manager) {
   recipient->CopyFirstFrom(KeyAt(GetSize() - 1), ValueAt(GetSize() - 1));
   SetKeyAt(GetSize() - 1, nullptr);
   SetValueAt(GetSize() - 1, RowId(0));
