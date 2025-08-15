@@ -69,11 +69,9 @@ class BPlusTreeLeafPage : public BPlusTreePage {
 
   void MoveAllTo(BPlusTreeLeafPage *recipient);
 
-  void MoveFirstToEndOf(BPlusTreeLeafPage *recipient,GenericKey *middle_key,
-                                    BufferPoolManager *buffer_pool_manager);
+  void MoveFirstToEndOf(BPlusTreeLeafPage *recipient);
 
-  void MoveLastToFrontOf(BPlusTreeLeafPage *recipient,GenericKey *middle_key,
-                                    BufferPoolManager *buffer_pool_manager);
+  void MoveLastToFrontOf(BPlusTreeLeafPage *recipient);
 
  private:
   void CopyNFrom(void *src, int size);
