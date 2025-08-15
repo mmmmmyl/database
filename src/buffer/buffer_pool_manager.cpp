@@ -108,7 +108,7 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
   // 1.   If P does not exist, return true.
   // 2.   If P exists, but has a non-zero pin-count, return false. Someone is using the page.
   // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
-  if(page_table_.find(page_id)==page_table_.end()){DeallocatePage(page_id);return true;}
+  if(page_table_.find(page_id)!=page_table_.end()){DeallocatePage(page_id);return true;}
   else{
     if(pages_[page_table_[page_id]].GetPinCount()>0) return false;
     else{

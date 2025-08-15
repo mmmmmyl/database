@@ -191,7 +191,8 @@ bool LeafPage::Lookup(const GenericKey *key, RowId &value, const KeyManager &KM)
 int LeafPage::RemoveAndDeleteRecord(const GenericKey *key, const KeyManager &KM) {
   RowId value;
   if (!Lookup(key, value, KM)) {
-    return GetSize();
+    LOG(INFO)<<"Dont find key in leaf page "<<GetPageId();
+    return -1;
   }
   int index = KeyIndex(key, KM);
   for (int i = index; i < GetSize() - 1; i++) {
@@ -218,7 +219,7 @@ void LeafPage::MoveAllTo(LeafPage *recipient) {
   SetSize(0);
   // SetKeyAt(0, nullptr);
   // SetValueAt(0, RowId(0));
-  SetNextPageId(0);
+  // SetNextPageId(0);
 }
 
 /*****************************************************************************
@@ -228,16 +229,15 @@ void LeafPage::MoveAllTo(LeafPage *recipient) {
  * Remove the first key & value pair from this page to "recipient" page.
  *
  */
-void LeafPage::MoveFirstToEndOf(LeafPage *recipient, GenericKey *middle_key,
-                                    BufferPoolManager *buffer_pool_manager){
+void LeafPage::MoveFirstToEndOf(LeafPage *recipient){
   recipient->CopyLastFrom(KeyAt(0), ValueAt(0));
   for (int i = 0; i < GetSize() - 1; i++) {
     SetKeyAt(i, KeyAt(i + 1));
     SetValueAt(i, ValueAt(i + 1));
   }
   SetSize(GetSize() - 1);
-  SetKeyAt(GetSize(), nullptr);
-  SetValueAt(GetSize(), RowId(0));
+  // SetKeyAt(GetSize(), nullptr);
+  // SetValueAt(GetSize(), RowId(0));
 }
 
 /*
@@ -252,13 +252,11 @@ void LeafPage::CopyLastFrom(GenericKey *key, const RowId value) {
 /*
  * Remove the last key & value pair from this page to "recipient" page.
  */
-void LeafPage::MoveLastToFrontOf(LeafPage *recipient, GenericKey *middle_key,
-                                    BufferPoolManager *buffer_pool_manager) {
+void LeafPage::MoveLastToFrontOf(LeafPage *recipient) {
   recipient->CopyFirstFrom(KeyAt(GetSize() - 1), ValueAt(GetSize() - 1));
   // SetKeyAt(GetSize() - 1, nullptr);
   // SetValueAt(GetSize() - 1, RowId(0));
   SetSize(GetSize() - 1);
-  recipient->IncreaseSize(1);
 }
 
 /*
