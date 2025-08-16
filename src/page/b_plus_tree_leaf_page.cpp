@@ -30,6 +30,7 @@ void LeafPage::Init(page_id_t page_id, page_id_t parent_id, int key_size, int ma
   SetPageType(IndexPageType::LEAF_PAGE);
   SetSize(0);
   SetLSN(INVALID_LSN);
+  SetNextPageId(INVALID_PAGE_ID);
 }
 
 /**

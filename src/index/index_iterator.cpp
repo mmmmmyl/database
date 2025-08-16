@@ -7,7 +7,7 @@ IndexIterator::IndexIterator() = default;
 
 IndexIterator::IndexIterator(page_id_t page_id, BufferPoolManager *bpm, int index)
     : current_page_id(page_id), item_index(index), buffer_pool_manager(bpm) {
-  page = reinterpret_cast<LeafPage *>(buffer_pool_manager->FetchPage(current_page_id)->GetData());
+  if(current_page_id!=INVALID_PAGE_ID)page = reinterpret_cast<LeafPage *>(buffer_pool_manager->FetchPage(current_page_id)->GetData());
 }
 
 IndexIterator::~IndexIterator() {
@@ -19,14 +19,35 @@ IndexIterator::~IndexIterator() {
  * TODO: Student Implement
  */
 std::pair<GenericKey *, RowId> IndexIterator::operator*() {
-  ASSERT(false, "Not implemented yet.");
+  if(current_page_id == INVALID_PAGE_ID || page == nullptr || item_index >= page->GetSize()) {
+    return {nullptr, RowId()};
+  }
+  return page->GetItem(item_index);
 }
 
 /**
  * TODO: Student Implement
  */
 IndexIterator &IndexIterator::operator++() {
-  ASSERT(false, "Not implemented yet.");
+  if(current_page_id == INVALID_PAGE_ID || page == nullptr) {
+    return *this;
+  }
+  if(item_index == (page->GetSize() - 1)) {
+    // Move to next page
+    if (page->GetNextPageId() != INVALID_PAGE_ID) {
+      buffer_pool_manager->UnpinPage(current_page_id, false);
+      current_page_id = page->GetNextPageId();
+      page = reinterpret_cast<LeafPage *>(buffer_pool_manager->FetchPage(current_page_id)->GetData());
+      item_index = 0;
+    } else {
+      current_page_id = INVALID_PAGE_ID;
+      page = nullptr;
+      item_index = 0;
+    }
+  } else {
+    item_index+=1;
+  }
+  return *this;
 }
 
 bool IndexIterator::operator==(const IndexIterator &itr) const {
