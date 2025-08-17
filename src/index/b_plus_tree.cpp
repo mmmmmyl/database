@@ -23,6 +23,11 @@ BPlusTree::BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_manager
   if (internal_max_size_ == UNDEFINED_SIZE) {
     internal_max_size_ = (PAGE_SIZE - LEAF_PAGE_HEADER_SIZE) / (processor_.GetKeySize() + sizeof(page_id_t));
   }
+  IndexRootsPage *index_root_page = reinterpret_cast<IndexRootsPage*>(buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+  if (!index_root_page->GetRootId(index_id_, &root_page_id_)) {
+    root_page_id_ = INVALID_PAGE_ID;
+  }
+  buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, false);
 }
 
 void BPlusTree::Destroy(page_id_t current_page_id) {
@@ -128,6 +133,9 @@ void BPlusTree::StartNewTree(GenericKey *key, const RowId &value) {
   new_leaf_page->Insert(key, value, processor_);
   root_page_id_ = new_page_id;
   buffer_pool_manager_->UnpinPage(new_page_id, true);
+  IndexRootsPage *index_root_page = reinterpret_cast<IndexRootsPage*>(buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+  index_root_page->Insert(index_id_, root_page_id_);
+  buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, true);
 }
 
 /*
@@ -392,6 +400,9 @@ bool BPlusTree::AdjustRoot(BPlusTreePage *old_root_node) {
     BPlusTreePage *child_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(child_page_id));
     child_page->SetParentPageId(INVALID_PAGE_ID);
     buffer_pool_manager_->UnpinPage(child_page_id, true);
+    IndexRootsPage *index_root_page = reinterpret_cast<IndexRootsPage*>(buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+    index_root_page->Update(index_id_, root_page_id_);
+    buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, true);
     return true;
   }
   return false;
@@ -465,7 +476,15 @@ Page *BPlusTree::FindLeafPage(const GenericKey *key, page_id_t page_id, bool lef
  * updating it.
  */
 void BPlusTree::UpdateRootPageId(int insert_record) {
-  ;
+  if(insert_record) {
+    IndexRootsPage *index_root_page = reinterpret_cast<IndexRootsPage*>(buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+    index_root_page->Insert(index_id_, root_page_id_);
+    buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, true);
+  } else {
+    IndexRootsPage *index_root_page = reinterpret_cast<IndexRootsPage*>(buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+    index_root_page->Update(index_id_, root_page_id_);
+    buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, true);
+  }
 }
 
 /**

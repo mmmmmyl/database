@@ -34,6 +34,9 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
   // 3.     Delete R from the page table and insert P.
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
   frame_id_t frame_id;
+  if(page_id==CATALOG_META_PAGE_ID) {
+    LOG(INFO) << "Fetching catalog meta page.";
+  }
   if(page_id==-1) {
     LOG(INFO) << "Invalid page id";
   }
@@ -44,7 +47,14 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
     return &pages_[frame_id];
   }
   else{
-    if(free_list_.size()>0) {frame_id = free_list_.front();free_list_.pop_front();return &pages_[frame_id];}
+    if(free_list_.size()>0) {
+      frame_id = free_list_.front();
+      free_list_.pop_front();
+      page_table_[page_id] = frame_id;
+      pages_[frame_id].ResetMemory();
+      disk_manager_->ReadPage(page_id,reinterpret_cast<char*>(pages_[frame_id].GetData()));
+      return &pages_[frame_id];
+    }
     if(!replacer_->Victim(&frame_id)) return nullptr;
     Page *pageR = &pages_[frame_id];
     if(pageR->IsDirty()) {FlushPage(pageR->page_id_);pageR->is_dirty_=false;}

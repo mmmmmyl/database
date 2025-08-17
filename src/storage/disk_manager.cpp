@@ -44,6 +44,9 @@ void DiskManager::ReadPage(page_id_t logical_page_id, char *page_data) {
 
 void DiskManager::WritePage(page_id_t logical_page_id, const char *page_data) {
   ASSERT(logical_page_id >= 0, "Invalid page id.");
+  if(logical_page_id == CATALOG_META_PAGE_ID){
+    LOG(INFO)<< "Writing to catalog meta page, this should be done carefully.";
+  }
   WritePhysicalPage(MapPageId(logical_page_id), page_data);
 }
 

@@ -41,7 +41,8 @@ Column::Column(const Column *other)
 uint32_t Column::SerializeTo(char *buf) const {
   MACH_WRITE_INT32(buf,COLUMN_MAGIC_NUM);
   buf += sizeof(uint32_t);
-  MACH_WRITE_STRING(buf,name_);
+  MACH_WRITE_UINT32(buf,name_.length());
+  MACH_WRITE_STRING(buf+sizeof(uint32_t),name_);
   buf += MACH_STR_SERIALIZED_SIZE(name_);
   MACH_WRITE_UINT32(buf,len_);
   buf += sizeof(uint32_t);
@@ -60,10 +61,11 @@ uint32_t Column::SerializeTo(char *buf) const {
  * TODO: Student Implement
  */
 uint32_t Column::GetSerializedSize() const {
-  if (type_ == TypeId::kTypeChar){
-    return sizeof(uint32_t) * 6 + MACH_STR_SERIALIZED_SIZE(name_);
-  }
-  return sizeof(uint32_t) * 6 + sizeof(uint32_t);
+  return sizeof(uint32_t) * 6 + MACH_STR_SERIALIZED_SIZE(name_);
+  // if (type_ == TypeId::kTypeChar){
+  //   return sizeof(uint32_t) * 6 + MACH_STR_SERIALIZED_SIZE(name_);
+  // }
+  // return sizeof(uint32_t) * 6 + sizeof(uint32_t);
 }
 
 /**
