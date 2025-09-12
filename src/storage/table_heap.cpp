@@ -6,7 +6,7 @@
 bool TableHeap::InsertTuple(Row &row, Txn *txn) { 
   // Step1: Find the page which contains the tuple.
   auto page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id_));
-  LOG(INFO) << page<<" "<<page->GetTablePageId() << " " << page->GetNextPageId();
+  //LOG(INFO) << page<<" "<<page->GetTablePageId() << " " << page->GetNextPageId();
   // If the page could not be found, then abort the recovery.
   if (page == nullptr) return false;
   // Otherwise, insert the tuple into the page.
@@ -28,7 +28,7 @@ bool TableHeap::InsertTuple(Row &row, Txn *txn) {
     // If the page is full, then create a new page and link it to the current page.
     auto new_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(next_page_id));
     if (new_page == nullptr) return false;
-    new_page->Init(new_page->GetTablePageId(), page->GetTablePageId(), log_manager_, txn);
+    new_page->Init(next_page_id, page->GetTablePageId(), log_manager_, txn);
     page->SetNextPageId(new_page->GetTablePageId());
     page->WUnlatch();
     buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
@@ -137,4 +137,6 @@ TableIterator TableHeap::Begin(Txn *txn) {
 /**
  * TODO: Student Implement
  */
-TableIterator TableHeap::End() { return TableIterator(nullptr, RowId(), nullptr, false, true); }
+TableIterator TableHeap::End() { 
+  return TableIterator(this, RowId(), nullptr, false, true); 
+}

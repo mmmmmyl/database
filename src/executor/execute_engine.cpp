@@ -344,7 +344,48 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteCreateTable" << std::endl;
 #endif
-  return DB_FAILED;
+  if (current_db_.empty()) {
+    cout << "No database selected" << endl;
+    return DB_FAILED;
+  }
+  pSyntaxNode cur = ast->child_;
+  string table_name = cur->val_;
+  cur = cur->next_->child_;
+
+  static const char* typestrs[3]={"int","float","char"};//kTypeInvalid = 0, kTypeInt, kTypeFloat, kTypeChar, KMaxTypeId = kTypeChar
+  auto typestr2typeid=[](char * typestr)->TypeId{
+    if(!strcmp(typestr,typestrs[0])) return kTypeInt;
+    else if(!strcmp(typestr,typestrs[1])) return kTypeFloat;
+    else if(!strcmp(typestr,typestrs[2])) return kTypeChar;
+    else throw "wrong type";
+  };
+
+  int index=0;
+  vector<Column*> columns;
+  while(cur->type_==kNodeColumnDefinition){
+    bool unique=false;
+    if(!strcmp(cur->val_,"unique")) unique = true;
+    string column_name = cur->child_->val_;
+    TypeId column_type = typestr2typeid(cur->child_->next_->val_);
+    Column* column;
+    if(column_type==kTypeChar) column=new Column(column_name, column_type, index++ ,atoi(cur->child_->next_->child_->val_), false, unique);
+    else column=new Column(column_name, column_type, index++, false, unique);
+    columns.push_back(column);
+  }
+  Schema* schema=new Schema(columns,true);
+  TableInfo* tableinfo;
+  dberr_t result = dbs_[current_db_]->catalog_mgr_->CreateTable(table_name,schema,nullptr,tableinfo);
+  if(result!=DB_SUCCESS) return result;
+
+  vector<string> primary_columns;
+  cur=cur->child_;
+  while(cur!=nullptr){
+    primary_columns.push_back(cur->val_);
+    cur=cur->next_;
+  }
+  IndexInfo * indexinfo;
+  string index_type("BPlusTree");
+  return dbs_[current_db_]->catalog_mgr_->CreateIndex(table_name,table_name+"_index",primary_columns,nullptr,indexinfo,index_type);
 }
 
 /**
@@ -354,7 +395,8 @@ dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteDropTable" << std::endl;
 #endif
- return DB_FAILED;
+  string tablename = ast->child_->val_;
+  return dbs_[current_db_]->catalog_mgr_->DropTable(tablename);
 }
 
 /**
@@ -364,7 +406,34 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteShowIndexes" << std::endl;
 #endif
-  return DB_FAILED;
+  vector<TableInfo*> tables;
+  dbs_[current_db_]->catalog_mgr_->GetTables(tables);
+  vector<pair<string,string>> table_indexs;
+  vector<IndexInfo *> tableindexs;
+  for(TableInfo* table:tables){
+    dbs_[current_db_]->catalog_mgr_->GetTableIndexes(table->GetTableName(),tableindexs);
+    for(IndexInfo* index:tableindexs){
+      table_indexs.push_back(make_pair(table->GetTableName(),index->GetIndexName()));
+    }
+  }
+
+  string table_in_db("Table_indexs_in_" + current_db_);
+  uint max_width = table_in_db.length();
+  for (const auto &itr : table_indexs) {
+    if (itr.first.size()+itr.second.size() > max_width) max_width = itr.first.size()+itr.second.size();
+  }
+  max_width += 1;
+  cout << "+" << setfill('-') << setw(max_width + 2) << ""
+       << "+" << endl;
+  cout << "| " << std::left << setfill(' ') << setw(max_width) << table_in_db << " |" << endl;
+  cout << "+" << setfill('-') << setw(max_width + 2) << ""
+       << "+" << endl;
+  for (const auto &itr : table_indexs) {
+    cout << "| " << std::left << setfill(' ') << setw(max_width) << itr.first+" "+itr.second << " |" << endl;
+  }
+  cout << "+" << setfill('-') << setw(max_width + 2) << ""
+       << "+" << endl;
+  return DB_SUCCESS;
 }
 
 /**
@@ -374,7 +443,24 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteCreateIndex" << std::endl;
 #endif
-  return DB_FAILED;
+  pSyntaxNode cur = ast->child_;
+  string indexname = cur->val_;
+  cur = cur->next_;
+  string tablename = cur->val_;
+  cur = cur->next_;
+  vector<string> index_keys;
+  pSyntaxNode key_ptr = cur->child_;
+  while(key_ptr){
+    index_keys.push_back(key_ptr->val_);
+    key_ptr = key_ptr->next_;
+  }
+  cur = cur->next_;
+  string index_type="bptree";
+  if(cur!=nullptr){
+    index_type = cur->child_->val_;
+  }
+  IndexInfo* indexinfo;
+  return dbs_[current_db_]->catalog_mgr_->CreateIndex(tablename,indexname,index_keys,nullptr,indexinfo,index_type);
 }
 
 /**
@@ -384,7 +470,19 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteDropIndex" << std::endl;
 #endif
-  return DB_FAILED;
+  string indexname = ast->child_->val_;
+  vector<TableInfo*> tables;
+  vector<IndexInfo*> indexs;
+  dbs_[current_db_]->catalog_mgr_->GetTables(tables);
+  for(auto table : tables){
+    dbs_[current_db_]->catalog_mgr_->GetTableIndexes(table->GetTableName(),indexs);
+    for(auto index : indexs){
+      if(index->GetIndexName()==indexname){
+        return dbs_[current_db_]->catalog_mgr_->DropIndex(table->GetTableName(),indexname);
+      }
+    }
+  }
+  return DB_INDEX_NOT_FOUND;
 }
 
 dberr_t ExecuteEngine::ExecuteTrxBegin(pSyntaxNode ast, ExecuteContext *context) {
@@ -415,7 +513,60 @@ dberr_t ExecuteEngine::ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context)
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteExecfile" << std::endl;
 #endif
-  return DB_FAILED;
+  string filename = ast->child_->val_;
+  ifstream file(filename);
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  std::string content = buffer.str();
+  file.close();
+  
+  vector<string> statements;
+  string statement;
+  for(int i=0;i<content.size();i++){
+    if(content[i]==';') {
+      statements.push_back(statement+";");
+      statement.clear();
+    }
+    else statement+=content[i];
+  }
+  
+  ExecuteEngine engine;
+  for(const string& statement:statements){
+    // read from buffer
+    // create buffer for sql input
+    YY_BUFFER_STATE bp = yy_scan_string(statement.c_str());
+    if (bp == nullptr) {
+      LOG(ERROR) << "Failed to create yy buffer state." << std::endl;
+      exit(1);
+    }
+    yy_switch_to_buffer(bp);
+
+    // init parser module
+    MinisqlParserInit();
+
+    // parse
+    yyparse();
+
+    // parse result handle
+    if (MinisqlParserGetError()) {
+      // error
+      printf("%s\n", MinisqlParserGetErrorMessage());
+    }
+
+    auto result = engine.Execute(MinisqlGetParserRootNode());
+
+    // clean memory after parse
+    MinisqlParserFinish();
+    yy_delete_buffer(bp);
+    yylex_destroy();
+
+    // quit condition
+    engine.ExecuteInformation(result);
+    if (result == DB_QUIT) {
+      break;
+    }
+  }
 }
 
 /**
@@ -425,5 +576,5 @@ dberr_t ExecuteEngine::ExecuteQuit(pSyntaxNode ast, ExecuteContext *context) {
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteQuit" << std::endl;
 #endif
- return DB_FAILED;
+ return DB_QUIT;
 }

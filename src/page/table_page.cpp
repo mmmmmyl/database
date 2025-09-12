@@ -3,6 +3,7 @@
 // TODO: Update interface implementation if apply recovery
 
 void TablePage::Init(page_id_t page_id, page_id_t prev_id, LogManager *log_mgr, Txn *txn) {
+  // why page_id storage twice?
   memcpy(GetData(), &page_id, sizeof(page_id));
   SetPrevPageId(prev_id);
   SetNextPageId(INVALID_PAGE_ID);
@@ -26,6 +27,11 @@ bool TablePage::InsertTuple(Row &row, Schema *schema, Txn *txn, LockManager *loc
     }
   }
   // Otherwise we claim available free space..
+  // I moved this line from after `SetTupleSize(i, serialized_size);` to here
+  // And I don't know why the author put it on that place
+  // Set rid
+  row.SetRowId(RowId(GetTablePageId(), i));
+  
   SetFreeSpacePointer(GetFreeSpacePointer() - serialized_size);
   uint32_t __attribute__((unused)) write_bytes = row.SerializeTo(GetData() + GetFreeSpacePointer(), schema);
   ASSERT(write_bytes == serialized_size, "Unexpected behavior in row serialize.");
@@ -33,8 +39,7 @@ bool TablePage::InsertTuple(Row &row, Schema *schema, Txn *txn, LockManager *loc
   // Set the tuple.
   SetTupleOffsetAtSlot(i, GetFreeSpacePointer());
   SetTupleSize(i, serialized_size);
-  // Set rid
-  row.SetRowId(RowId(GetTablePageId(), i));
+
   if (i == GetTupleCount()) {
     SetTupleCount(GetTupleCount() + 1);
   }

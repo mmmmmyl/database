@@ -14,8 +14,10 @@
 #include "record/row.h"
 
 extern "C" {
+int yyparse(void);
+#include "parser/minisql_lex.h"
 #include "parser/parser.h"
-};
+}
 
 /**
  * ExecuteEngine
